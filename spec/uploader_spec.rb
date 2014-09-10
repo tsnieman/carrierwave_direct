@@ -111,6 +111,7 @@ describe CarrierWaveDirect::Uploader do
     context "where #store_dir returns '#{sample(:store_dir)}'" do
       before do
         allow(subject).to receive(:store_dir).and_return(sample(:store_dir))
+        allow(subject).to receive(:cache_dir).and_return(sample(:cache_dir))
       end
 
       context "and #extension_regexp returns '#{sample(:extension_regexp)}'" do
@@ -118,8 +119,8 @@ describe CarrierWaveDirect::Uploader do
           allow(subject).to receive(:extension_regexp).and_return(sample(:extension_regexp))
         end
 
-        it "should return /\\A#{sample(:store_dir)}\\/#{GUID_REGEXP}\\/.+\\.#{sample(:extension_regexp)}\\z/" do
-          expect(subject.key_regexp).to eq /\A#{sample(:store_dir)}\/#{GUID_REGEXP}\/.+\.(?i)#{sample(:extension_regexp)}(?-i)\z/
+        it "should return /\\A(#{sample(:store_dir)}|#{sample(:cache_dir)})\\/#{GUID_REGEXP}\\/.+\\.#{sample(:extension_regexp)}\\z/" do
+          expect(subject.key_regexp).to eq /\A(#{sample(:store_dir)}|#{sample(:cache_dir)})\/#{GUID_REGEXP}\/.+\.(?i)#{sample(:extension_regexp)}(?-i)\z/
         end
       end
     end
@@ -239,28 +240,16 @@ describe CarrierWaveDirect::Uploader do
         end
       end
 
-      context "and the model's remote #{sample(:mounted_as)} url has whitespace in it" do
+      context "and the model's remote #{sample(:mounted_as)} url has special characters in it" do
         before do
           allow(mounted_model).to receive(
             "remote_#{mounted_subject.mounted_as}_url"
-          ).and_return("http://anyurl.com/any_path/video_dir/filename 2.avi")
+          ).and_return("http://anyurl.com/any_path/video_dir/filename ()+[]2.avi")
         end
 
-        it "should be sanitized (whitespace replaced with _)" do
+        it "should be sanitized (special characters replaced with _)" do
           mounted_subject.filename
-          expect(mounted_subject.key).to match /filename_2.avi$/
-        end
-      end
-
-      context "and the model's remote url contains escape characters" do
-        before do 
-          subject.key = nil
-          allow(subject).to receive(:present?).and_return(:true)
-          allow(subject).to receive(:url).and_return("http://anyurl.com/any_path/video_dir/filename ()+[]2.avi")
-        end
-
-        it "should be escaped and replaced with non whitespace characters" do
-          expect(subject.key).to match /filename%20%28%29%2B%5B%5D2.avi/
+          expect(mounted_subject.key).to match /filename___\+__2.avi$/
         end
       end
 
@@ -272,7 +261,7 @@ describe CarrierWaveDirect::Uploader do
         end
 
         it "should not double escape already escaped characters" do
-          expect(subject.key).to match /filename%20%28%29%2B%5B%5D2.avi/
+          expect(subject.key).to match /filename \(\)\+\[\]2.avi/
         end
 
       end

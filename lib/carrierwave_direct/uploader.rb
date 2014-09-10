@@ -61,7 +61,7 @@ module CarrierWaveDirect
     def key
       return @key if @key.present?
       if present?
-        self.key = URI.decode(URI.parse(URI.encode(url, " []+()")).path[1 .. -1])
+        self.key = decoded_key # explicitly set key
       else
         @key = "#{store_dir}/#{guid}/#{FILENAME_WILDCARD}"
       end
@@ -82,7 +82,7 @@ module CarrierWaveDirect
     end
 
     def key_regexp
-      /\A#{store_dir}\/[a-f\d\-]+\/.+\.(?i)#{extension_regexp}(?-i)\z/
+      /\A(#{store_dir}|#{cache_dir})\/[a-f\d\-]+\/.+\.(?i)#{extension_regexp}(?-i)\z/
     end
 
     def extension_regexp
@@ -107,8 +107,8 @@ module CarrierWaveDirect
 
     private
 
-    def encoded_url
-      URI.encode(URI.decode(url), " []+()")
+    def decoded_key
+      URI.decode(URI.parse(url).path[1 .. -1])
     end
 
     def key_from_file(fname)
